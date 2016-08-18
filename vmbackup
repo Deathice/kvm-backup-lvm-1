@@ -155,10 +155,10 @@ for lv in ${LVMS}
         if [ $(verify_space ${NAMELV}) == 0 ]
         then
             sizelvm=$(/sbin/lvs |grep ${NAMELV}|awk '{print $NF}'|grep -Eo '[[:digit:]]{1,4}'|head -1)
-            logger -i -t $(basename $0) "Creando Snapshot ${NAMELV}-snap de ${lv}"
+            logger -i -t $(basename $0) "Create Snapshot ${NAMELV}-snap for ${lv}"
             lvcreate -s -n ${NAMELV}-snap ${lv} -L ${sizelvm}G > /dev/null
         else
-            logger -i -t $(basename $0) "No hay espacio suficiente para el snapshot"
+            logger -i -t $(basename $0) "Insufficient space in vg"
             exit 2
         fi
     done
@@ -179,9 +179,9 @@ function convert(){
         for hd in ${LVMS}
         do
             NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
-            logger -i -t $(basename $0) "Convirtiendo ${hd}-snap a ${PATHBK}/${NAMEHD}.qcow2"
+            logger -i -t $(basename $0) "Convert ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
             qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
-            logger -i -t $(basename $0) "Eliminando ${hd}-snap"
+            logger -i -t $(basename $0) "Delete ${hd}-snap"
             lvremove -f ${hd}-snap > /dev/null
         done
     else
@@ -190,12 +190,12 @@ function convert(){
             NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
             if [[ *"${LVMS}"* =~ ${NAMEHD} ]]
             then
-                logger -i -t $(basename $0) "Convirtiendo ${hd}-snap a ${PATHBK}/${NAMEHD}.qcow2"
+                logger -i -t $(basename $0) "Convert ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
                 qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
-                logger -i -t $(basename $0) "Eliminando ${hd}-snap"
+                logger -i -t $(basename $0) "Delete ${hd}-snap"
                 lvremove -f ${hd}-snap > /dev/null
             else
-                logger -i -t $(basename $0) "Convirtiendo ${hd} a ${PATHBK}/${NAMEHD}.qcow2"
+                logger -i -t $(basename $0) "Convert ${hd} a ${PATHBK}/${NAMEHD}.qcow2"
                 qemu-img convert -p -O qcow2 ${hd} ${PATHBK}/${NAMEHD}.qcow2
                 startvm
                 logger -i -t $(basename $0) "Starting VM ${VMNAME}"
