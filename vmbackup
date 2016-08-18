@@ -12,12 +12,23 @@ MINUTOS=2
 TIEMPO=120
 
 ###                      ###
+#         Usage            #
+###                      ###
+function usage(){
+    echo "Usage: "
+    echo "$(basename $0) virtualmachine"
+    echo "or"
+    echo "$(basename $0) virtualmachine timewait"
+}
+
+###                      ###
 # Verificando Argumentos   #
 ###                      ###
 
 if [ $# -eq 0 ]
   then
     echo "VM Name is required"
+    usage
     exit 1
 elif [ $# -eq 2 ]
 then
