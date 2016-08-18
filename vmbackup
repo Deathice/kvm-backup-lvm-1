@@ -1,0 +1,238 @@
+#!/bin/bash
+
+###                      ###
+#  Configuracion default   #
+###                      ###
+COUNTER=0
+INTERVALO=60
+VMNAME=$1
+PATHBK="/Backup/${VMNAME}-$(date +%F)"
+MINUTOS=2
+
+TIEMPO=120
+
+###                      ###
+# Verificando Argumentos   #
+###                      ###
+
+if [ $# -eq 0 ]
+  then
+    echo "VM Name is required"
+    exit 1
+elif [ $# -eq 2 ]
+then
+    MINUTOS=$2
+    VMNAME=$1
+fi
+
+###                                ###
+#   Verifica espacio para snapshot   #
+###                                ###
+function verify_space(){
+    sizelvm=0
+    lv=$1
+    librevg=$(/sbin/vgs |awk '{print $6"|"$7}'|cut -d\| -f2 |grep -Eo '[[:digit:]]{1,4}'|head -1)
+    sizelvm=$(/sbin/lvs |grep ${lv}|awk '{print $NF}'|grep -Eo '[[:digit:]]{1,4}'|head -1)
+
+    let porciento=${librevg}/2
+
+    if [ ${porciento} -gt ${sizelvm} ]
+    then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
+###                             ###
+#   Verifica existencia de la vm  #
+###                             ###
+function ifexists(){
+    /usr/bin/virsh list --all |grep ${VMNAME} > /dev/null
+    if [ $? -eq 0  ]
+    then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
+###                         ###
+#   Verifica estado de la vm  #
+###                         ###
+function status(){
+    state=$(/usr/bin/virsh domstate ${VMNAME}|xargs|tr -d ' ')
+    if [ ${state} == "shutoff" ]
+    then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+function startvm(){
+    /usr/bin/virsh start ${VMNAME} > /dev/null
+}
+
+function shutdownvm(){
+    /usr/bin/virsh shutdown ${VMNAME} > /dev/null
+}
+
+function esperarold(){
+        COUNTER=0
+        while [ $(status) != 1 ];
+        do
+            sleep 5
+            logger -i -t $(basename $0) "shutoff ${VMNAME}"
+            let COUNTER=COUNTER+5
+            if [ ${COUNTER} -eq 60  ]
+            then
+                logger -i -t $(basename $0) "${VMNAME}"
+                shutdownvm
+            elif [ ${COUNTER} -eq ${TIEMPO}  ]
+            then
+                logger -i -t $(basename $0) "VM NOT shutdown after ${MINUTOS} minutes and ${MINUTOS} attempts"
+                exit 3
+            fi
+        done
+}
+function esperar(){
+    TRY=1
+    let SEGUNDOS=${MINUTOS}*60
+
+    while [ $(status) != 1 ];
+        do
+            sleep 5
+            logger -i -t $(basename $0) "shutoff ${VMNAME}"
+                INTERVALO=60
+                INTERVALO=$[${INTERVALO}*${TRY}]
+                if [ ${COUNTER} -eq ${INTERVALO} ]
+                then
+                    TRY=$[${TRY}+1]
+                    logger -i -t $(basename $0) "ATTEMP ${TRY}"
+                    shutdownvm
+                fi
+            let COUNTER=${COUNTER}+5
+            if [ ${COUNTER} -eq ${SEGUNDOS} ]
+            then
+                logger -i -t $(basename $0) "VM NOT shutdown after ${MINUTOS} minutes and ${TRY} attempts"
+                exit 3
+            fi
+    done
+}
+
+###                      ###
+#   Genera xml de backup   #
+###                      ###
+
+function genxml(){
+    NAMEXML="${PATHBK}/${VMNAME}-$(date +%F).xml"
+    /usr/bin/virsh dumpxml ${VMNAME} > ${NAMEXML}
+}
+
+###                                ###
+#     Elimina Snapshot LVM           #
+###                                ###
+
+###                                ###
+#     Crea Snapshot y Genera Backup  #
+###                                ###
+function csnapshot(){
+for lv in ${LVMS}
+    do
+        NAMELV=$(echo ${lv} | awk -F/ '{print $NF}')
+        if [ $(verify_space ${NAMELV}) == 0 ]
+        then
+            sizelvm=$(/sbin/lvs |grep ${NAMELV}|awk '{print $NF}'|grep -Eo '[[:digit:]]{1,4}'|head -1)
+            logger -i -t $(basename $0) "Creando Snapshot ${NAMELV}-snap de ${lv}"
+            lvcreate -s -n ${NAMELV}-snap ${lv} -L ${sizelvm}G > /dev/null
+        else
+            logger -i -t $(basename $0) "No hay espacio suficiente para el snapshot"
+            exit 2
+        fi
+    done
+}
+
+function convert(){
+    LVMS=$(grep disk ${NAMEXML} -A 2 |grep source |  grep "dev=" |cut -d\' -f2|xargs)
+    IMAGES=$(grep disk ${NAMEXML} -A 2 |grep source |grep "file=" |cut -d\' -f2|xargs)
+
+    ### Craendo Snapshots #####
+    csnapshot
+
+    ### Convirtiendo Imagenes ###
+    if [ -z ${IMAGES} ]
+    then
+        startvm
+        logger -i -t $(basename $0) "Starting VM ${VMNAME}"
+        for hd in ${LVMS}
+        do
+            NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
+            logger -i -t $(basename $0) "Convirtiendo ${hd}-snap a ${PATHBK}/${NAMEHD}.qcow2"
+            qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
+            logger -i -t $(basename $0) "Eliminando ${hd}-snap"
+            lvremove -f ${hd}-snap > /dev/null
+        done
+    else
+        for hd in ${IMAGES} ${LVMS} 
+        do
+            NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
+            if [[ *"${LVMS}"* =~ ${NAMEHD} ]]
+            then
+                logger -i -t $(basename $0) "Convirtiendo ${hd}-snap a ${PATHBK}/${NAMEHD}.qcow2"
+                qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
+                logger -i -t $(basename $0) "Eliminando ${hd}-snap"
+                lvremove -f ${hd}-snap > /dev/null
+            else
+                logger -i -t $(basename $0) "Convirtiendo ${hd} a ${PATHBK}/${NAMEHD}.qcow2"
+                qemu-img convert -p -O qcow2 ${hd} ${PATHBK}/${NAMEHD}.qcow2
+                startvm
+                logger -i -t $(basename $0) "Starting VM ${VMNAME}"
+            fi
+        done
+    fi
+    ###########################
+}
+
+###                      ###
+#     Genera el Backup     #
+###                      ###
+
+function backup(){
+    logger -i -t $(basename $0) "Starting Backup from ${VMNAME}"
+    logger -i -t $(basename $0) "BackUP Config XML"
+    genxml
+    convert
+    if [ $? -eq 0 ]
+    then
+        if [ $(status) -eq 0 ]
+        then
+            logger -i -t $(basename $0) "Success Backup VM ${VMNAME}"
+            exit 0
+        fi
+    else
+        exit 1
+    fi
+}
+
+
+
+###                      ###
+#    Programa Principal    #
+###                      ###
+if [ $(ifexists) -eq 1  ]
+then
+    logger -i -t $(basename $0) "${VMNAME} vm doesn't exists"
+else
+    mkdir -p ${PATHBK}
+    if [ $(status) -eq 1 ]
+    then
+        logger -i -t $(basename $0) "Status: shutoff" 
+        backup
+    else
+        logger -i -t $(basename $0) "Status: running" 
+        shutdownvm
+        esperar
+        backup
+    fi
+fi
