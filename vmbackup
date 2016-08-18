@@ -226,8 +226,6 @@ function backup(){
     fi
 }
 
-
-
 ###                      ###
 #    Programa Principal    #
 ###                      ###
@@ -235,15 +233,18 @@ if [ $(ifexists) -eq 1  ]
 then
     logger -i -t $(basename $0) "${VMNAME} vm doesn't exists"
 else
-    mkdir -p ${PATHBK}
-    if [ $(status) -eq 1 ]
+    mkdir -p ${PATHBK} 2> /dev/null
+    if [ $? -eq 0]
     then
-        logger -i -t $(basename $0) "Status: shutoff" 
-        backup
-    else
-        logger -i -t $(basename $0) "Status: running" 
-        shutdownvm
-        esperar
-        backup
+        if [ $(status) -eq 1 ]
+        then
+            logger -i -t $(basename $0) "VM: ${VMNAME} Status: shutoff"
+            backup
+        else
+            logger -i -t $(basename $0) "VM: ${VMNAME} Status: running"
+            shutdownvm
+            esperar
+            backup
+        fi
     fi
 fi
