@@ -6,7 +6,7 @@
 COUNTER=0
 INTERVALO=60
 VMNAME=$1
-PATHBK="/Backup/${VMNAME}-$(date +%F)"
+PATHBK="/Backups/${VMNAME}-$(date +%F)"
 MINUTOS=2
 
 TIEMPO=120
@@ -89,24 +89,6 @@ function shutdownvm(){
     /usr/bin/virsh shutdown ${VMNAME} > /dev/null
 }
 
-function esperarold(){
-        COUNTER=0
-        while [ $(status) != 1 ];
-        do
-            sleep 5
-            logger -i -t $(basename $0) "shutoff ${VMNAME}"
-            let COUNTER=COUNTER+5
-            if [ ${COUNTER} -eq 60  ]
-            then
-                logger -i -t $(basename $0) "${VMNAME}"
-                shutdownvm
-            elif [ ${COUNTER} -eq ${TIEMPO}  ]
-            then
-                logger -i -t $(basename $0) "VM NOT shutdown after ${MINUTOS} minutes and ${MINUTOS} attempts"
-                exit 3
-            fi
-        done
-}
 function esperar(){
     TRY=1
     let SEGUNDOS=${MINUTOS}*60
@@ -114,19 +96,21 @@ function esperar(){
     while [ $(status) != 1 ];
         do
             sleep 5
-            logger -i -t $(basename $0) "shutoff ${VMNAME}"
+            /bin/logger -i -t $(basename $0) "shutoff ${VMNAME}"
                 INTERVALO=60
                 INTERVALO=$[${INTERVALO}*${TRY}]
                 if [ ${COUNTER} -eq ${INTERVALO} ]
                 then
                     TRY=$[${TRY}+1]
-                    logger -i -t $(basename $0) "ATTEMP ${TRY}"
+                    /bin/logger -i -t $(basename $0) "ATTEMP ${TRY}"
                     shutdownvm
                 fi
             let COUNTER=${COUNTER}+5
             if [ ${COUNTER} -eq ${SEGUNDOS} ]
             then
-                logger -i -t $(basename $0) "VM NOT shutdown after ${MINUTOS} minutes and ${TRY} attempts"
+                /bin/logger -i -t $(basename $0) "VM NOT shutdown after ${MINUTOS} minutes and ${TRY} attempts"
+                /bin/logger -i -t $(basename $0) "Clean Dirs ${PATHBK}"
+                /bin/rm -rf ${PATHBK}
                 exit 3
             fi
     done
@@ -155,10 +139,10 @@ for lv in ${LVMS}
         if [ $(verify_space ${NAMELV}) == 0 ]
         then
             sizelvm=$(/sbin/lvs |grep ${NAMELV}|awk '{print $NF}'|grep -Eo '[[:digit:]]{1,4}'|head -1)
-            logger -i -t $(basename $0) "Create Snapshot ${NAMELV}-snap for ${lv}"
-            lvcreate -s -n ${NAMELV}-snap ${lv} -L ${sizelvm}G > /dev/null
+            /sbin/lvcreate -s -n ${NAMELV}-snap ${lv} -L ${sizelvm}G > /dev/null
+            /bin/logger -i -t $(basename $0) "Create Snapshot ${NAMELV}-snap for ${lv}"
         else
-            logger -i -t $(basename $0) "Insufficient space in vg"
+            /bin/logger -i -t $(basename $0) "Insufficient space in vg"
             exit 2
         fi
     done
@@ -175,14 +159,16 @@ function convert(){
     if [ -z ${IMAGES} ]
     then
         startvm
-        logger -i -t $(basename $0) "Starting VM ${VMNAME}"
+        /bin/logger -i -t $(basename $0) "Starting VM ${VMNAME}"
         for hd in ${LVMS}
         do
             NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
-            logger -i -t $(basename $0) "Convert ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
-            qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
-            logger -i -t $(basename $0) "Delete ${hd}-snap"
-            lvremove -f ${hd}-snap > /dev/null
+            /bin/logger -i -t $(basename $0) "Convert 1 ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
+            /bin/logger -i -t  $(basename $0) "/usr/bin/qemu-img convert -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2"
+            sleep 50s
+            /usr/bin/qemu-img convert -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
+            /bin/logger -i -t $(basename $0) "Delete 1 ${hd}-snap"
+            /sbin/lvremove -f ${hd}-snap > /dev/null
         done
     else
         for hd in ${IMAGES} ${LVMS} 
@@ -190,15 +176,15 @@ function convert(){
             NAMEHD=$(echo ${hd} | awk -F/ '{print $NF}')
             if [[ *"${LVMS}"* =~ ${NAMEHD} ]]
             then
-                logger -i -t $(basename $0) "Convert ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
-                qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
-                logger -i -t $(basename $0) "Delete ${hd}-snap"
-                lvremove -f ${hd}-snap > /dev/null
+                /bin/logger -i -t $(basename $0) "Convert 2 ${hd}-snap to ${PATHBK}/${NAMEHD}.qcow2"
+                /usr/bin/qemu-img convert -p -O qcow2 ${hd}-snap ${PATHBK}/${NAMEHD}.qcow2
+                /bin/logger -i -t $(basename $0) "Delete 2 ${hd}-snap"
+                /sbin/lvremove -f ${hd}-snap > /dev/null
             else
-                logger -i -t $(basename $0) "Convert ${hd} a ${PATHBK}/${NAMEHD}.qcow2"
-                qemu-img convert -p -O qcow2 ${hd} ${PATHBK}/${NAMEHD}.qcow2
+                /bin/logger -i -t $(basename $0) "Convert 3 ${hd} a ${PATHBK}/${NAMEHD}.qcow2"
+                /usr/bin/qemu-img convert -p -O qcow2 ${hd} ${PATHBK}/${NAMEHD}.qcow2
                 startvm
-                logger -i -t $(basename $0) "Starting VM ${VMNAME}"
+                /bin/logger -i -t $(basename $0) "Starting VM ${VMNAME}"
             fi
         done
     fi
@@ -210,15 +196,15 @@ function convert(){
 ###                      ###
 
 function backup(){
-    logger -i -t $(basename $0) "Starting Backup from ${VMNAME}"
-    logger -i -t $(basename $0) "BackUP Config XML"
+    /bin/logger -i -t $(basename $0) "Starting Backup from ${VMNAME}"
+    /bin/logger -i -t $(basename $0) "BackUP Config XML"
     genxml
     convert
     if [ $? -eq 0 ]
     then
         if [ $(status) -eq 0 ]
         then
-            logger -i -t $(basename $0) "Success Backup VM ${VMNAME}"
+            /bin/logger -i -t $(basename $0) "Success Backup VM ${VMNAME}"
             exit 0
         fi
     else
@@ -231,17 +217,17 @@ function backup(){
 ###                      ###
 if [ $(ifexists) -eq 1  ]
 then
-    logger -i -t $(basename $0) "${VMNAME} vm doesn't exists"
+    /bin/logger -i -t $(basename $0) "${VMNAME} vm doesn't exists"
 else
     mkdir -p ${PATHBK} 2> /dev/null
     if [ $? -eq 0 ]
     then
         if [ $(status) -eq 1 ]
         then
-            logger -i -t $(basename $0) "VM: ${VMNAME} Status: shutoff"
+            /bin/logger -i -t $(basename $0) "VM: ${VMNAME} Status: shutoff"
             backup
         else
-            logger -i -t $(basename $0) "VM: ${VMNAME} Status: running"
+            /bin/logger -i -t $(basename $0) "VM: ${VMNAME} Status: running"
             shutdownvm
             esperar
             backup
