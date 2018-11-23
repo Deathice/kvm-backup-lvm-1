@@ -1,0 +1,14 @@
+[wguests]
+192.168.8.145
+
+[lguests]
+192.168.8.253
+
+[wguests:vars]
+ansible_user: itmsupport@interamerican.local
+ansible_password: S0p0rt3inter2017.
+ansible_port: 5986
+ansible_connection: winrm
+ansible_winrm_transport: credssp
+ansible_winrm_server_cert_validation: ignore
+ansible_winrm_kerberos_delegation: true
