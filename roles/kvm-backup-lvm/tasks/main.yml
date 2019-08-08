@@ -17,3 +17,15 @@
     content: "{{ xml.get_xml }}"
     dest: "{{ xml_file }}"
   delegate_to: localhost
+
+- name: extracting disks from xml
+  xml:
+    path: "{{ xml_file }}"
+    xpath: /domain/devices/disk/source
+    content: attribute
+  register: disks
+  delegate_to: localhost
+
+- name: print xml
+  debug:
+    msg: "{{ disks }}"
