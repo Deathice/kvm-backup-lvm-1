@@ -1,0 +1,19 @@
+---
+# tasks file for kvm-backup-lvm
+- name: get vm configuration
+  virt:
+    name: "{{ vmname }}"
+    command: get_xml
+  register: xml
+
+- name: create directory for backup
+  file:
+      path: "{{ dir_guest }}" # required. Path to the file being managed.
+      state: directory
+  delegate_to: localhost
+
+- name: saving configuration
+  copy:
+    content: "{{ xml.get_xml }}"
+    dest: "{{ xml_file }}"
+  delegate_to: localhost
