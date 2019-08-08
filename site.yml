@@ -1,0 +1,7 @@
+---
+- name: Virtual Guest Backup
+  hosts: nodos
+  roles:
+    - role: kvm-backup-lvm
+      vars:
+        - vmname: "zproxy"
