@@ -26,6 +26,37 @@
   register: disks
   delegate_to: localhost
 
-- name: print xml
+- name: print detected lvms
   debug:
-    msg: "{{ disks }}"
+    msg: "{{ item.source.dev }}"
+  when: item.source.dev is defined
+  loop: "{{ disks.matches }}"
+  register: lvms
+
+- name: set lvms
+  set_fact:
+    tags_dict: "{{ (tags_dict|default({}))|combine({item.source.dev: item.source.dev.split('/')[2]}) }}"
+  loop: "{{ disks.matches }}"
+  when: item.source.dev is defined
+
+- name: print tags_dict
+  debug:
+    msg: "{{ tags_dict }}"
+
+- name: Get lvms
+  debug:
+    msg: "{{ item.msg.split('/')[2] }}"
+  loop: "{{ lvms.results }}"
+  register: vgs
+  when: item.msg is defined
+
+- name: Show VGS
+  debug:
+    var: vgs
+
+- name: display available space
+  debug:
+#    var: ansible_facts['lvm']['vgs']['Data']
+    msg: "{{ item.value.free_g }}"
+  when: item.key == vgs.results[0].msg
+  loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"
