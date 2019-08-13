@@ -1,6 +1,3 @@
 # Workspace files are user-specific
-*.sublime-workspace
-*.sublime-project
-
-zproxy20190808/zproxy.xml
+zproxy*/zproxy.xml
 setup-facts.json
