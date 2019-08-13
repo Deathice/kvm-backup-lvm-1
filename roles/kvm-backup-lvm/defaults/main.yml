@@ -1,0 +1,3 @@
+---
+# defaults file for kvm-backup-lvm
+backup_path: "/home/binary/Projects/kvm-backup-lvm"

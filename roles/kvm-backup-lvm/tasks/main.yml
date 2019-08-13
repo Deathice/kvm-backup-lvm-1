@@ -1,0 +1,62 @@
+---
+# tasks file for kvm-backup-lvm
+- name: get vm configuration
+  virt:
+    name: "{{ vmname }}"
+    command: get_xml
+  register: xml
+
+- name: create directory for backup
+  file:
+      path: "{{ dir_guest }}" # required. Path to the file being managed.
+      state: directory
+  delegate_to: localhost
+
+- name: saving configuration
+  copy:
+    content: "{{ xml.get_xml }}"
+    dest: "{{ xml_file }}"
+  delegate_to: localhost
+
+- name: extracting disks from xml
+  xml:
+    path: "{{ xml_file }}"
+    xpath: /domain/devices/disk/source
+    content: attribute
+  register: disks
+  delegate_to: localhost
+
+- name: print detected lvms
+  debug:
+    msg: "{{ item.source.dev }}"
+  when: item.source.dev is defined
+  loop: "{{ disks.matches }}"
+  register: lvms
+
+- name: set lvms
+  set_fact:
+    tags_dict: "{{ (tags_dict|default({}))|combine({item.source.dev: item.source.dev.split('/')[2]}) }}"
+  loop: "{{ disks.matches }}"
+  when: item.source.dev is defined
+
+- name: print tags_dict
+  debug:
+    msg: "{{ tags_dict }}"
+
+- name: Get lvms
+  debug:
+    msg: "{{ item.msg.split('/')[2] }}"
+  loop: "{{ lvms.results }}"
+  register: vgs
+  when: item.msg is defined
+
+- name: Show VGS
+  debug:
+    var: vgs
+
+- name: display available space
+  debug:
+#    var: ansible_facts['lvm']['vgs']['Data']
+    msg: "{{ item.value.free_g }}"
+  when: item.key == vgs.results[0].msg
+  loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"

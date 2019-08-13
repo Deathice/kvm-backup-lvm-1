@@ -1,0 +1,16 @@
+---
+- name: Backup for KVM guests
+  hosts: all
+
+  include_files:
+    - vars.yml
+
+  tasks:
+    - name: Windows
+      block:
+        - name: Get XML Guest
+          virt:
+            name: "{{ item }}"
+            command: get_xml
+          with_items:
+            - vm_name

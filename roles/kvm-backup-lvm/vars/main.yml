@@ -1,0 +1,4 @@
+---
+# vars file for kvm-backup-lvm
+dir_guest: "{{ backup_path }}/{{ vmname }}{{ lookup('pipe','date +%Y%m%d') }}"
+xml_file: "{{ dir_guest }}/{{ vmname }}.xml"
