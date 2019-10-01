@@ -8,7 +8,7 @@
 
 - name: create directory for backup
   file:
-      path: "{{ dir_guest }}" # required. Path to the file being managed.
+      path: "{{ dir_guest |mandatory }}" # required. Path to the file being managed.
       state: directory
   delegate_to: localhost
 
@@ -43,7 +43,7 @@
   debug:
     msg: "{{ tags_dict }}"
 
-- name: Get lvms
+- name: Get vgs
   debug:
     msg: "{{ item.msg.split('/')[2] }}"
   loop: "{{ lvms.results }}"
@@ -59,4 +59,27 @@
 #    var: ansible_facts['lvm']['vgs']['Data']
     msg: "{{ item.value.free_g }}"
   when: item.key == vgs.results[0].msg
+  register: available_space
   loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"
+
+- name: display available space
+  debug:
+  #    var: ansible_facts['lvm']['vgs']['Data']
+    msg: "{{ item.value.size_g }}"
+  register: lvm_spaces
+  loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
+
+- name: print lvms var
+  debug:
+    msg: "{{ item.msg }}"
+  loop: "{{ lvm_spaces.results }}"
+  when: item.item.key == "zproxy_test"
+
+
+# - name: Assert that vgs space is more than 70%
+#  assert:
+#    that:
+#      - "{{ item.value.free_g |int }} >= 100"
+#    fail_msg: "The space is minor than 100"
+#    success_msg: "The space is major than 100"
+#  loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"

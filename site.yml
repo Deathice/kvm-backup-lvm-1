@@ -4,4 +4,5 @@
   roles:
     - role: kvm-backup-lvm
       vars:
+        - backup_path: /home/kevyn/Documents/course/backup_kvm/
         - vmname: "zproxy"
