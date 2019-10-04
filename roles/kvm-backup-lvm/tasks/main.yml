@@ -54,7 +54,7 @@
   debug:
     var: vgs
 
-- name: display available space
+- name: display available space for vgs
   debug:
 #    var: ansible_facts['lvm']['vgs']['Data']
     msg: "{{ item.value.free_g }}"
@@ -62,24 +62,28 @@
   register: available_space
   loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"
 
-- name: display available space
+- name: display available space for lvs
   debug:
   #    var: ansible_facts['lvm']['vgs']['Data']
     msg: "{{ item.value.size_g }}"
   register: lvm_spaces
+  when: item.key == "zproxy_test"
   loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
 
-- name: print lvms var
+- name: Join lvm with vgs
   debug:
-    msg: "{{ item.msg }}"
-  loop: "{{ lvm_spaces.results }}"
-  when: item.item.key == "zproxy_test"
+    msg: "LVM: {{ item.0.item.key }} - Value: {{ item.0.item.value.size_g }} con VGS: {{ item.1.item.key }} - Value: {{ item.1.item.value.free_g }} "
+  loop: "{{ lvm_spaces.results |product(available_space.results) |list }}"
+  when:
+    - item.0.item.key == "zproxy_test" and item.1.item.key == "Data"
 
-
-# - name: Assert that vgs space is more than 70%
-#  assert:
-#    that:
-#      - "{{ item.value.free_g |int }} >= 100"
-#    fail_msg: "The space is minor than 100"
-#    success_msg: "The space is major than 100"
-#  loop: "{{ ansible_facts['lvm']['vgs'] | dict2items }}"
+- name: Validate space on vgs for snapshot to lvm
+  assert:
+    that:
+      # - "{{ item.1.value.free_g |int }} >= 100"
+      - "{{ item.0.item.value.size_g }} < {{ item.1.item.value.free_g }} "
+    fail_msg: "The space is minor than 100"
+    success_msg: "The space is major than 100"
+  loop: "{{ lvm_spaces.results |product(available_space.results) |list }}"
+  when:
+    - item.0.item.key == "zproxy_test" and item.1.item.key == "Data"
