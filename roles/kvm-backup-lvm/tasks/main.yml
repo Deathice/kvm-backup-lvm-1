@@ -80,10 +80,11 @@
 - name: Validate space on vgs for snapshot to lvm
   assert:
     that:
-      # - "{{ item.1.value.free_g |int }} >= 100"
       - "{{ item.0.item.value.size_g }} < {{ item.1.item.value.free_g }} "
     fail_msg: "The space is minor than 100"
     success_msg: "The space is major than 100"
   loop: "{{ lvm_spaces.results |product(available_space.results) |list }}"
   when:
     - item.0.item.key == "zproxy_test" and item.1.item.key == "Data"
+
+
