@@ -5,7 +5,7 @@ Script for backup libvirt virtual machines in kvm and lvm disks.
 - [x] get xml from libvirt
 - [x] detect lvm and vgs
 - [x] calculate free space in storage
-- [ ] shutdown vm for snapshot
-- [ ] create snapshot of lvm
-- [ ] start vm after snapshot
-- [ ] convert lvm to qcow2 for storage backup
+- [X] shutdown vm for snapshot
+- [X] create snapshot of lvm
+- [X] start vm after snapshot
+- [X] convert lvm to qcow2 for storage backup
