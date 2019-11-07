@@ -10,13 +10,11 @@
   file:
       path: "{{ dir_guest |mandatory }}" # required. Path to the file being managed.
       state: directory
-  delegate_to: localhost
 
 - name: saving configuration
   copy:
     content: "{{ xml.get_xml }}"
     dest: "{{ xml_file }}"
-  delegate_to: localhost
 
 - name: extracting disks from xml
   xml:
@@ -24,7 +22,6 @@
     xpath: /domain/devices/disk/source
     content: attribute
   register: disks
-  delegate_to: localhost
 
 - name: print detected lvms
   debug:
@@ -98,9 +95,23 @@
   loop: "{{ lvs_name |zip(vgs_name) |list }}"
   loop_control:
     loop_var: lvm_and_vgs
-    pause: 5
+    pause: "{{ wait_time }}"
 
 - name: Start up the {{ vmname }}
   virt:
     name: "{{ vmname }}"
     state: running
+
+- name: Converting snapshot
+  shell: "qemu-img convert -O qcow2 /dev/{{ item.1 }}/{{ item.0 }}-snap {{ dest_qcow }}/{{ item.0 }}.qcow2"
+  loop: "{{ lvs_name |zip(vgs_name) |list }}"
+
+- name: Removing snapshot
+  lvol:
+    vg: "{{ item.1 }}"
+    lv: "{{ item.0 }}-snap"
+    state: absent
+    force: true
+  loop: "{{ lvs_name |zip(vgs_name) |list }}"
+  loop_control:
+    pause: 60

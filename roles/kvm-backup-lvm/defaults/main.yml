@@ -1,3 +1,5 @@
 ---
 # defaults file for kvm-backup-lvm
-backup_path: "/home/binary/Projects/kvm-backup-lvm"
+backup_path: "/backups"
+vmname: "zproxy"
+wait_time: 120

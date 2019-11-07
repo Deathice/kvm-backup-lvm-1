@@ -3,9 +3,3 @@
   hosts: nodos
   roles:
     - role: kvm-backup-lvm
-      vars:
-        - backup_path: /home/kevyn/Documents/course/backup_kvm
-        - vmname: "zproxy"
-        - vgs_name: []
-        - lvs_name: []
-        - lvm_size: []

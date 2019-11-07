@@ -2,3 +2,7 @@
 # vars file for kvm-backup-lvm
 dir_guest: "{{ backup_path }}/{{ vmname }}{{ lookup('pipe','date +%Y%m%d') }}"
 xml_file: "{{ dir_guest }}/{{ vmname }}.xml"
+vgs_name: [] # Variable to fill with the volume groups of the vm
+lvs_name: [] # Variable to fill with the lvs of the vm
+lvm_size: [] # Variable to define the lvs size of the vm
+dest_qcow: "{{ dir_guest }}"
