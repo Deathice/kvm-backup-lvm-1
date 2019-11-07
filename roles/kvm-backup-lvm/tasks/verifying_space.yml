@@ -21,3 +21,8 @@
     # msg: "lvcreate -n /dev/{{ lvm_and_vgs.1 }}/{{ lvm_and_vgs.0 }} -L +{{ item.1 }}GB"
     msg: "lvcreate -n {{ item.0 }} -L +{{ item.1 }}GB"
   loop: "{{ lvs_name |zip(lvm_size) |list }}"
+
+- name: Shutting down the {{ vmname }}
+  virt:
+    name: "{{ vmname }}"
+    state: shutdown
