@@ -10,3 +10,14 @@
     # - item.0.item.key == lvs_name.1 and item.1.item.key == vgs_name.0
     - item.0.item.key == lvm_and_vgs.0 and item.1.item.key == lvm_and_vgs.1
 
+- name: Saving lvs with size # Get all space and define your lvm
+  set_fact: # change for set_fact
+    lvm_size: "{{ lvm_size }} + [ '{{ item.value.size_g }}' ]"
+  when: item.key == lvm_and_vgs.0
+  loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
+
+- name: Display lvs with size
+  debug:
+    # msg: "lvcreate -n /dev/{{ lvm_and_vgs.1 }}/{{ lvm_and_vgs.0 }} -L +{{ item.1 }}GB"
+    msg: "lvcreate -n {{ item.0 }} -L +{{ item.1 }}GB"
+  loop: "{{ lvs_name |zip(lvm_size) |list }}"

@@ -8,3 +8,4 @@
         - vmname: "zproxy"
         - vgs_name: []
         - lvs_name: []
+        - lvm_size: []

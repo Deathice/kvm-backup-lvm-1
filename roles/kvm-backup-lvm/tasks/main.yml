@@ -85,7 +85,7 @@
   #    var: ansible_facts['lvm']['vgs']['Data']
     msg: "{{ item.value.size_g }}"
   register: lvm_spaces
-  when: item.key == "zproxy_test"
+  # when: item.key == "zproxy_test"
   loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
 
 - name: Setting the loop var
