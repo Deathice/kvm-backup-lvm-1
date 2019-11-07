@@ -1,28 +1,20 @@
 ---
 - name: Validate space on vgs for snapshot to lvm
-  assert: # Validate the debug of this module
+  assert:
     that:
       - "{{ item.0.item.value.size_g }} < {{ item.1.item.value.free_g }} "
     fail_msg: "You can't create a snapshot"
     success_msg: "You can create a snapshot"
+    quiet: true
   loop: "{{ lvm_spaces.results |product(available_space.results) |list }}"
   when:
-    # - item.0.item.key == lvs_name.1 and item.1.item.key == vgs_name.0
     - item.0.item.key == lvm_and_vgs.0 and item.1.item.key == lvm_and_vgs.1
 
-- name: Saving lvs with size # Get all space and define your lvm
-  set_fact: # change for set_fact
-    lvm_size: "{{ lvm_size }} + [ '{{ item.value.size_g }}' ]"
-  when: item.key == lvm_and_vgs.0
+- name: Creating snapshot for {{ vmname }} and {{ lvm_and_vgs.0 }}
+  lvol:
+    vg: "{{ lvm_and_vgs.1 }}"
+    lv: "{{ lvm_and_vgs.0 }}"
+    snapshot: "{{ lvm_and_vgs.0 }}-snap"
+    size: "{{ item.value.size_g }}G"
   loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
-
-- name: Display lvs with size
-  debug:
-    # msg: "lvcreate -n /dev/{{ lvm_and_vgs.1 }}/{{ lvm_and_vgs.0 }} -L +{{ item.1 }}GB"
-    msg: "lvcreate -n {{ item.0 }} -L +{{ item.1 }}GB"
-  loop: "{{ lvs_name |zip(lvm_size) |list }}"
-
-- name: Shutting down the {{ vmname }}
-  virt:
-    name: "{{ vmname }}"
-    state: shutdown
+  when: item.key == lvm_and_vgs.0

@@ -88,8 +88,19 @@
   # when: item.key == "zproxy_test"
   loop: "{{ ansible_facts['lvm']['lvs'] | dict2items }}"
 
+- name: Shutting down the {{ vmname }}
+  virt:
+    name: "{{ vmname }}"
+    state: shutdown
+
 - name: Setting the loop var
   include_tasks: verifying_space.yml
   loop: "{{ lvs_name |zip(vgs_name) |list }}"
   loop_control:
     loop_var: lvm_and_vgs
+    pause: 5
+
+- name: Start up the {{ vmname }}
+  virt:
+    name: "{{ vmname }}"
+    state: running
