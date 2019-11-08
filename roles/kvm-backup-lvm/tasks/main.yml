@@ -90,12 +90,15 @@
     name: "{{ vmname }}"
     state: shutdown
 
+- name: Waiting to shuuting down vm
+  pause:
+    seconds: "{{ wait_time }}"
+
 - name: Setting the loop var
   include_tasks: verifying_space.yml
   loop: "{{ lvs_name |zip(vgs_name) |list }}"
   loop_control:
     loop_var: lvm_and_vgs
-    pause: "{{ wait_time }}"
 
 - name: Start up the {{ vmname }}
   virt:
